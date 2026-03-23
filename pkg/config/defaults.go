@@ -38,6 +38,7 @@ func DefaultConfig() *Config {
 				MaxToolIterations:         50,
 				SummarizeMessageThreshold: 20,
 				SummarizeTokenPercent:     75,
+				SteeringMode:              "one-at-a-time",
 				ToolFeedback: ToolFeedbackConfig{
 					Enabled:       true,
 					MaxArgsLength: 300,
@@ -170,6 +171,14 @@ func DefaultConfig() *Config {
 				WriteTimeout:   10,
 				MaxConnections: 100,
 				AllowFrom:      FlexibleStringSlice{},
+			},
+		},
+		Hooks: HooksConfig{
+			Enabled: true,
+			Defaults: HookDefaultsConfig{
+				ObserverTimeoutMS:    500,
+				InterceptorTimeoutMS: 5000,
+				ApprovalTimeoutMS:    60000,
 			},
 		},
 		ModelList: []*ModelConfig{
@@ -511,6 +520,7 @@ func DefaultConfig() *Config {
 			MonitorUSB: true,
 		},
 		Voice: VoiceConfig{
+			ModelName:         "",
 			EchoTranscription: false,
 		},
 		BuildInfo: BuildInfo{

@@ -217,6 +217,7 @@ Hubungkan Picoclaw ke Jaringan Sosial Agent hanya dengan mengirim satu pesan mel
 | `picoclaw gateway`        | Mulai gateway                    |
 | `picoclaw status`         | Tampilkan status                 |
 | `picoclaw version`        | Tampilkan info versi             |
+| `picoclaw model`          | Lihat atau ubah model default    |
 | `picoclaw cron list`      | Daftar semua tugas terjadwal     |
 | `picoclaw cron add ...`   | Tambah tugas terjadwal           |
 | `picoclaw cron disable`   | Nonaktifkan tugas terjadwal      |

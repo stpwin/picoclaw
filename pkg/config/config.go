@@ -90,6 +90,7 @@ type Config struct {
 	Channels  ChannelsConfig  `json:"channels"`
 	ModelList []*ModelConfig  `json:"model_list"` // New model-centric provider configuration
 	Gateway   GatewayConfig   `json:"gateway"`
+	Hooks     HooksConfig     `json:"hooks,omitempty"`
 	Tools     ToolsConfig     `json:"tools"`
 	Heartbeat HeartbeatConfig `json:"heartbeat"`
 	Devices   DevicesConfig   `json:"devices"`
@@ -111,6 +112,36 @@ func (c *Config) WithSecurity(sec *SecurityConfig) *Config {
 	}
 	c.security = sec
 	return c
+}
+
+type HooksConfig struct {
+	Enabled   bool                         `json:"enabled"`
+	Defaults  HookDefaultsConfig           `json:"defaults,omitempty"`
+	Builtins  map[string]BuiltinHookConfig `json:"builtins,omitempty"`
+	Processes map[string]ProcessHookConfig `json:"processes,omitempty"`
+}
+
+type HookDefaultsConfig struct {
+	ObserverTimeoutMS    int `json:"observer_timeout_ms,omitempty"`
+	InterceptorTimeoutMS int `json:"interceptor_timeout_ms,omitempty"`
+	ApprovalTimeoutMS    int `json:"approval_timeout_ms,omitempty"`
+}
+
+type BuiltinHookConfig struct {
+	Enabled  bool            `json:"enabled"`
+	Priority int             `json:"priority,omitempty"`
+	Config   json.RawMessage `json:"config,omitempty"`
+}
+
+type ProcessHookConfig struct {
+	Enabled   bool              `json:"enabled"`
+	Priority  int               `json:"priority,omitempty"`
+	Transport string            `json:"transport,omitempty"`
+	Command   []string          `json:"command,omitempty"`
+	Dir       string            `json:"dir,omitempty"`
+	Env       map[string]string `json:"env,omitempty"`
+	Observe   []string          `json:"observe,omitempty"`
+	Intercept []string          `json:"intercept,omitempty"`
 }
 
 // BuildInfo contains build-time version information
@@ -234,9 +265,15 @@ type RoutingConfig struct {
 	Threshold  float64 `json:"threshold"`   // complexity score in [0,1]; score >= threshold → primary model
 }
 
-// ToolFeedbackConfig controls whether tool execution details are sent to the
-// chat channel as real-time feedback messages. When enabled, every tool call
-// produces a short notification with the tool name and its parameters.
+// SubTurnConfig configures the SubTurn execution system.
+type SubTurnConfig struct {
+	MaxDepth              int `json:"max_depth"               env:"PICOCLAW_AGENTS_DEFAULTS_SUBTURN_MAX_DEPTH"`
+	MaxConcurrent         int `json:"max_concurrent"          env:"PICOCLAW_AGENTS_DEFAULTS_SUBTURN_MAX_CONCURRENT"`
+	DefaultTimeoutMinutes int `json:"default_timeout_minutes" env:"PICOCLAW_AGENTS_DEFAULTS_SUBTURN_DEFAULT_TIMEOUT_MINUTES"`
+	DefaultTokenBudget    int `json:"default_token_budget"    env:"PICOCLAW_AGENTS_DEFAULTS_SUBTURN_DEFAULT_TOKEN_BUDGET"`
+	ConcurrencyTimeoutSec int `json:"concurrency_timeout_sec" env:"PICOCLAW_AGENTS_DEFAULTS_SUBTURN_CONCURRENCY_TIMEOUT_SEC"`
+}
+
 type ToolFeedbackConfig struct {
 	Enabled       bool `json:"enabled"         env:"PICOCLAW_AGENTS_DEFAULTS_TOOL_FEEDBACK_ENABLED"`
 	MaxArgsLength int  `json:"max_args_length" env:"PICOCLAW_AGENTS_DEFAULTS_TOOL_FEEDBACK_MAX_ARGS_LENGTH"`
@@ -252,12 +289,15 @@ type AgentDefaults struct {
 	ImageModel                string             `json:"image_model,omitempty"           env:"PICOCLAW_AGENTS_DEFAULTS_IMAGE_MODEL"`
 	ImageModelFallbacks       []string           `json:"image_model_fallbacks,omitempty"`
 	MaxTokens                 int                `json:"max_tokens"                      env:"PICOCLAW_AGENTS_DEFAULTS_MAX_TOKENS"`
+	ContextWindow             int                `json:"context_window,omitempty"        env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_WINDOW"`
 	Temperature               *float64           `json:"temperature,omitempty"           env:"PICOCLAW_AGENTS_DEFAULTS_TEMPERATURE"`
 	MaxToolIterations         int                `json:"max_tool_iterations"             env:"PICOCLAW_AGENTS_DEFAULTS_MAX_TOOL_ITERATIONS"`
 	SummarizeMessageThreshold int                `json:"summarize_message_threshold"     env:"PICOCLAW_AGENTS_DEFAULTS_SUMMARIZE_MESSAGE_THRESHOLD"`
 	SummarizeTokenPercent     int                `json:"summarize_token_percent"         env:"PICOCLAW_AGENTS_DEFAULTS_SUMMARIZE_TOKEN_PERCENT"`
 	MaxMediaSize              int                `json:"max_media_size,omitempty"        env:"PICOCLAW_AGENTS_DEFAULTS_MAX_MEDIA_SIZE"`
 	Routing                   *RoutingConfig     `json:"routing,omitempty"`
+	SteeringMode              string             `json:"steering_mode,omitempty"         env:"PICOCLAW_AGENTS_DEFAULTS_STEERING_MODE"` // "one-at-a-time" (default) or "all"
+	SubTurn                   SubTurnConfig      `json:"subturn"                                                                                     envPrefix:"PICOCLAW_AGENTS_DEFAULTS_SUBTURN_"`
 	ToolFeedback              ToolFeedbackConfig `json:"tool_feedback,omitempty"`
 	LogLevel                  string             `json:"log_level,omitempty"             env:"PICOCLAW_LOG_LEVEL"`
 }
@@ -870,7 +910,8 @@ type DevicesConfig struct {
 }
 
 type VoiceConfig struct {
-	EchoTranscription bool `json:"echo_transcription" env:"PICOCLAW_VOICE_ECHO_TRANSCRIPTION"`
+	ModelName         string `json:"model_name,omitempty" env:"PICOCLAW_VOICE_MODEL_NAME"`
+	EchoTranscription bool   `json:"echo_transcription"   env:"PICOCLAW_VOICE_ECHO_TRANSCRIPTION"`
 }
 
 // ModelConfig represents a model-centric provider configuration.
@@ -1597,7 +1638,13 @@ func resolveAPIKeys(models []*ModelConfig, configDir string) error {
 		for j, key := range models[i].apiKeys {
 			resolved, err := cr.Resolve(key)
 			if err != nil {
-				return fmt.Errorf("model_list[%d] (%s): api_keys[%d]: %w", i, models[i].ModelName, j, err)
+				return fmt.Errorf(
+					"model_list[%d] (%s): api_keys[%d]: %w",
+					i,
+					models[i].ModelName,
+					j,
+					err,
+				)
 			}
 			models[i].apiKeys[j] = resolved
 		}

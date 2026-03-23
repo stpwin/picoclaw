@@ -217,6 +217,7 @@ Connetti PicoClaw al Social Network degli Agent semplicemente inviando un singol
 | `picoclaw gateway`        | Avvia il gateway                   |
 | `picoclaw status`         | Mostra lo stato                    |
 | `picoclaw version`        | Mostra le info sulla versione      |
+| `picoclaw model`          | Mostra o cambia il modello predefinito |
 | `picoclaw cron list`      | Elenca tutti i job pianificati     |
 | `picoclaw cron add ...`   | Aggiunge un job pianificato        |
 | `picoclaw cron disable`   | Disabilita un job pianificato      |
