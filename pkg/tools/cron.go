@@ -40,7 +40,7 @@ func NewCronTool(
 	execEnabled := true
 	if config != nil {
 		allowCommand = config.Tools.Cron.AllowCommand
-		execEnabled = config.Tools.Exec.Enabled
+		execEnabled = config.Tools.Exec.Enabled && config.Tools.Exec.AllowRemote
 	}
 
 	var execTool *ExecTool
@@ -189,9 +189,7 @@ func (t *CronTool) addJob(ctx context.Context, args map[string]any) *ToolResult 
 		return ErrorResult("one of at_seconds, every_seconds, or cron_expr is required")
 	}
 
-	// GHSA-pv8c-p6jf-3fpp: command scheduling requires internal channel. When
-	// allow_command is disabled, explicit confirmation is required as an override.
-	// Non-command reminders remain open to all channels.
+	// If command is set, check if execution is allowed and if confirmation is provided when required
 	command, _ := args["command"].(string)
 	commandConfirm, _ := args["command_confirm"].(bool)
 	if command != "" {
