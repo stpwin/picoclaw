@@ -2377,7 +2377,7 @@ turnLoop:
 			if callHasMedia && !didStripMedia && isVisionUnsupportedError(err) {
 				didStripMedia = true
 				if !ts.opts.NoHistory {
-					history := ts.agent.Sessions.GetHistory(ts.sessionKey)
+					history = ts.agent.Sessions.GetHistory(ts.sessionKey)
 					ts.agent.Sessions.SetHistory(ts.sessionKey, stripMessageMedia(history))
 
 					// Keep persistedMessages aligned so abort restore-point trimming remains correct.
