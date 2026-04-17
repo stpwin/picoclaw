@@ -1,0 +1,64 @@
+name: Fork — ARM64 release for RPI5-3
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fork-release-arm64
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Test changed packages (fast feedback)
+        run: |
+          set -e
+          go test ./pkg/config/ ./pkg/mcp/ ./pkg/tools/ ./pkg/providers/openai_compat/
+
+      - name: Build arm64 binary
+        run: |
+          make build
+          ls -la build/
+
+      - name: Capture metadata
+        id: meta
+        run: |
+          SHA=$(git rev-parse --short=8 HEAD)
+          TAG="fork-$(date -u +%Y%m%d-%H%M%S)-${SHA}"
+          {
+            echo "sha=$SHA"
+            echo "tag=$TAG"
+          } >> "$GITHUB_OUTPUT"
+          sha256sum build/picoclaw-linux-arm64 > build/picoclaw-linux-arm64.sha256
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          SHA_SHORT: ${{ steps.meta.outputs.sha }}
+          TAG_NAME: ${{ steps.meta.outputs.tag }}
+        with:
+          tag_name:   ${{ steps.meta.outputs.tag }}
+          name:       ${{ steps.meta.outputs.tag }}
+          body: |
+            Automated fork build.
+            See `main` branch log for changes. Auto-deployed to RPI5-3.
+          files: |
+            build/picoclaw-linux-arm64
+            build/picoclaw-linux-arm64.sha256
+          prerelease: false
+          make_latest: true
