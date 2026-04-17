@@ -1,0 +1,10 @@
+[Unit]
+Description=PicoClaw fork auto-updater (stpwin/picoclaw)
+Documentation=https://github.com/stpwin/picoclaw
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/picoclaw-auto-update
+Environment=TZ=Asia/Bangkok
+# Don't fail the whole unit if a single run hiccups; the script already logs.
+SuccessExitStatus=0 1

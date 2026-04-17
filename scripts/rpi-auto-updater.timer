@@ -1,0 +1,12 @@
+[Unit]
+Description=Run PicoClaw fork auto-updater every hour
+Documentation=https://github.com/stpwin/picoclaw
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Persistent=true
+RandomizedDelaySec=3min
+
+[Install]
+WantedBy=timers.target
