@@ -81,11 +81,31 @@ mv -f "$STAGE" "$BIN"
 systemctl --user start "$SERVICE"
 sleep 4
 
-if ! systemctl --user is-active --quiet "$SERVICE"; then
-  log "ERROR new binary failed to start — rolling back"
+# Health gate. `is-active` alone is not enough: a build can start cleanly and
+# still be unusable. A stricter config parser, for example, rejects fields the
+# running config already contains and the unit then restart-loops (reported as
+# "activating", not "failed"), or the process listens but cannot serve. Check
+# three things, cheapest first, and roll back on any of them.
+rollback() {
+  log "ERROR $1 — rolling back to previous binary"
   cp -f "$PREV" "$BIN"
   systemctl --user start "$SERVICE"
   exit 1
+}
+
+systemctl --user is-active --quiet "$SERVICE" || rollback "new binary failed to start"
+
+# The gateway logs a explicit line when config validation fails, before exiting.
+if journalctl --user -u "$SERVICE" --no-pager --since "1 min ago" 2>/dev/null \
+     | grep -qE "Gateway startup failed|unknown field"; then
+  rollback "new binary rejected the existing config"
 fi
-log "OK    $latest_tag running on $SERVICE"
+
+# Serving check — the port must actually answer.
+PORT="${GATEWAY_PORT:-18789}"
+if ! curl -fsS -m 10 -o /dev/null "http://127.0.0.1:${PORT}/health"; then
+  rollback "gateway is up but /health does not answer on ${PORT}"
+fi
+
+log "OK    $latest_tag running on $SERVICE (start + config + /health verified)"
 echo "$latest_tag" > "$STATE"
